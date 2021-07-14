@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.font as tkFont
+from tkinter import messagebox
 import threading
 import time
 import signal
@@ -9,6 +10,9 @@ from sys import getsizeof
 import sys
 Card_Detect_Sensor1 = 7
 Error_Detector_Sensor = 11
+in1 = 16
+in2 =12
+en = 22
 yazAdedi = 0
 isSuccess = 0
 nazarFlag = 0
@@ -17,6 +21,12 @@ GPIO.setup(Card_Detect_Sensor1, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 GPIO.setup(Error_Detector_Sensor, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 rdr = RFID()
 util = rdr.util()
+GPIO.setup(in1, GPIO.OUT)
+GPIO.setup(in2, GPIO.OUT)
+GPIO.setup(en, GPIO.OUT)
+GPIO.output(in1, GPIO.LOW)
+GPIO.output(in2, GPIO.LOW)
+p = GPIO.PWM(en,1000)
 # Set util debug to true - it will print what's going on
 util.debug = True
 liste = [None]*66
@@ -32,11 +42,15 @@ class BackgroundTasks(threading.Thread):
         global flag
         global isSuccess
         print("Yazma islemi ", yazAdedi, " adet icin basliyor:")
-         
+       
+        GPIO.output(in1, GPIO.HIGH)
+        p.start(100)
         while yazAdedi > 0:
            # print("Kalan: ", yazAdedi)
             while GPIO.input(Card_Detect_Sensor1) == 1:
                 print("Kart Tespit Edildi!")
+                
+                p.start(100)
                 a = Hata_kontrol()
                 a.start()
                 flag = 1
@@ -51,7 +65,11 @@ class BackgroundTasks(threading.Thread):
                     while GPIO.input(Card_Detect_Sensor1) == 1:
                         pass
                         flag=0    
- 
+                else:
+                    print("buraya demokrasi gelmeli")
+                    
+        if yazAdedi == 0:
+            p.stop()
             
 class Hata_kontrol(threading.Thread):
     def run(self,*args,**kwargs):
@@ -72,6 +90,7 @@ class Hata_kontrol(threading.Thread):
                         
                         break
                     else:
+                        p.stop()
                         print("abboooww")
                         nazarFlag =1
                         flag = 0
@@ -259,23 +278,24 @@ def GCheckBox_455_command():
 
 
 def kart_modu_command():
-        print("command")
+    print("command")
 
 
 def GCheckBox_42_command():
-        print("command")
+    print("command")
 
 def etiket_modu_command():
-        print("command")
+    print("command")
         
         
 def hiz_dusur():
-    pass
+    p.stop()
     
 
 
 def GButton_148_command():
-        print("command")
+    GPIO.output(in1, GPIO.HIGH) 
+    p.start(100)
         
         
 root = tk.Tk()
@@ -478,9 +498,13 @@ GLabel_87["justify"] = "center"
 GLabel_87["text"] = "Motor Hızı"
 GLabel_87.place(x=190,y=560,width=70,height=25)
 
+def on_closing():
+    if messagebox.askokcancel("Çıkış", "Emin misin?"):
+        p.stop()
+        root.destroy()
 
-        
-        
+
+root.protocol("WM_DELETE_WINDOW", on_closing)
 root.mainloop()
 
 
